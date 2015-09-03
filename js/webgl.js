@@ -5,6 +5,9 @@ var TOAD_MODEL;
 // An array to store each ending of the lane
 var ENDINGS = [];
 
+// An array to store the mushrooms
+var ENEMIES = [];
+
 /**
 * Load the scene when the canvas is fully loaded
 */
@@ -38,7 +41,28 @@ function initScene () {
 
     engine.runRenderLoop(function () {
         scene.render();
+        ENEMIES.forEach(function (mushroom) {
+            if (mushroom.killed) {
+                //TODO: implement
+            } else {
+                mushroom.position.z -= 0.5;
+            }
+        })
     });
+
+    // Create box
+    var skybox = BABYLON.Mesh.CreateBox('skyBox', 100.0, scene);
+
+    // Create sky
+    var skyBoxMaterial = new BABYLON.StandardMaterial('skyBox', scene);
+    skyBoxMaterial.backFaceCulling = false;
+    skyBoxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+    skyBoxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+    skyBoxMaterial.reflectionTexture = new BABYLON.CubeTexture('data/textures/cubemap/cubemap', scene);
+    skyBoxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+
+    // Box + Sky
+    skybox.material = skyBoxMaterial;
 }
 
 /**
@@ -52,6 +76,13 @@ function initGame () {
     var LANE_INTERVAL = 5;
     var LANES_POSITIONS = [];
 
+    // Set ground texture
+    var ground = new BABYLON.StandardMaterial('ground', scene);
+    var texture = new BABYLON.Texture('data/textures/boxes2.jpg', scene);
+    texture.uScale = 100;
+    texture.vScale = 1;
+    ground.diffuseTexture = texture;
+
     // Function to create lanes
     var createLane = function (id, position) {
         var lane = BABYLON.Mesh.CreateBox('lane'+id, 1, scene);
@@ -60,6 +91,7 @@ function initGame () {
         lane.scaling.z = 800;
         lane.position.x = position;
         lane.position.z = lane.scaling.z / 2 - 200;
+        lane.material = ground;
     }
 
     var createEnding = function (id, position) {
@@ -87,6 +119,35 @@ function initGame () {
 
         currentLanePosition += LANE_INTERVAL;
     }
+
+    // The function ImportMesh will import the custom model in the scene
+    BABYLON.SceneLoader.ImportMesh('red_toad', 'data/models/', 'toad.babylon', scene, function (meshes) {
+        var m = meshes[0];
+        m.isVisible = false;
+        m.scaling = new BABYLON.Vector3(0.5,0.5,0.5);
+        TOAD_MODEL = m;
+    });
+
+    // Create a mushroom model in a random lane
+    var createEnemy = function () {
+        // The starting position of the toads
+        var posZ = 100;
+
+        // Get a random lane
+        var posX = LANES_POSITIONS[Math.floor(Math.random() * LANE_NUMBER)];
+
+        // Create a clone of the template
+        var mushroom = TOAD_MODEL.clone(TOAD_MODEL.name);
+        mushroom.id = TOAD_MODEL.name + (ENEMIES.length + 1);
+        mushroom.killed = false;
+        mushroom.isVisible = true;
+        mushroom.position = new BABYLON.Vector3(posX, mushroom.position.y / 2, posZ);
+
+        ENEMIES.push(mushroom);
+    }
+
+    // Add a new mushroom every 1s
+    setInterval(createEnemy, 1000);
 
     camera.position.x = LANES_POSITIONS[Math.floor(LANE_NUMBER / 2)];
 }
