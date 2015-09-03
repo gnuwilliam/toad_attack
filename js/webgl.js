@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', function () {
 }, false);
 
 /**
+* Adds keyboard event listener
+*/
+window.addEventListener('keydown', onKeyDown);
+
+/**
  * Creates a new BABYLON Engine and initialize the scene
  */
 function initScene () {
@@ -47,18 +52,19 @@ function initScene () {
             } else {
                 mushroom.position.z -= 0.5;
             }
-        })
+        });
+        cleanMushrooms();
     });
 
     // Create box
-    var skybox = BABYLON.Mesh.CreateBox('skyBox', 100.0, scene);
+    var skybox = BABYLON.Mesh.CreateBox('skyBox', 1000.0, scene);
 
     // Create sky
     var skyBoxMaterial = new BABYLON.StandardMaterial('skyBox', scene);
     skyBoxMaterial.backFaceCulling = false;
     skyBoxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
     skyBoxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-    skyBoxMaterial.reflectionTexture = new BABYLON.CubeTexture('data/textures/cubemap/cubemap', scene);
+    skyBoxMaterial.reflectionTexture = new BABYLON.CubeTexture('data/textures/pixelbg/pixelbg', scene);
     skyBoxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
 
     // Box + Sky
@@ -150,4 +156,108 @@ function initGame () {
     setInterval(createEnemy, 1000);
 
     camera.position.x = LANES_POSITIONS[Math.floor(LANE_NUMBER / 2)];
+}
+
+// Clear all the toads behind the camera
+function cleanMushrooms () {
+    for (var n = 0; n < ENEMIES.length; n++) {
+        if (ENEMIES[n].killed) {
+            var mushroom = ENEMIES[n];
+            // Destroy the clone
+            mushroom.dispose();
+            ENEMIES.splice(n, 1);
+            n--;
+
+            // Increase score
+            score += 1;
+        } else if (ENEMIES[n].position.z < -10) {
+            var mushroom = ENEMIES[n];
+            // Destroy the clone
+            mushroom.dispose();
+            ENEMIES.splice(n, 1);
+            n--;
+
+            // Decrease score
+            score -= 1;
+        }
+    }
+}
+
+// Add animation
+function animateEnding (ending) {
+    // Get the initial position of our Mesh
+    var posY = ending.position.y;
+
+    // Create the animation object
+    var animateEnding = new BABYLON.Animation(
+        'animateEnding',
+        'position.y',
+        60,
+        BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+        BABYLON.Animation.ANIMATIONLOOPMODE_RELATIVE
+    );
+
+    // Animation keys
+    var keys = [];
+    keys.push(
+        { frame: 0, value: posY },
+        { frame: 5, value: posY + 0.5 },
+        { frame: 10, value: posY }
+    );
+
+    // Add keys to the animation
+    animateEnding.setKeys(keys);
+
+    // Link the animation to the Mesh
+    ending.animations.push(animateEnding);
+
+    // Run the animation
+    scene.beginAnimation(ending, 0, 10, false, 1);
+}
+
+function onKeyDown(evt) {
+    var currentEnding = -1;
+
+    switch (evt.keyCode) {
+        case 65: //'A'
+            currentEnding = 0;
+            break;
+        case 83: //'S'
+            currentEnding = 1;
+            break;
+        case 68: //'D'
+            currentEnding = 2;
+            break;
+    }
+
+    if (currentEnding != -1) {
+        // Animate
+        animateEnding(ENDINGS[currentEnding]);
+
+        var mushroom = getToad(ENDINGS[currentEnding]);
+        if (mushroom) {
+            // Destroy the toad
+            mushroom.killed = true;
+        }
+    }
+}
+
+// Function checking if a toad is present on a given ending
+function getToad (ending) {
+    // for each toad
+    for (var i = 0; i < ENEMIES.length; i++) {
+        var mushroom = ENEMIES[i];
+
+        // Check if a toad is on the good lane
+        if (mushroom.position.x === ending.position.x) {
+            // Check if the toad is ON the ending
+            var diffSup = ending.position.z + 3;
+            var diffInf = ending.position.z - 3;
+
+            if (mushroom.position.z > diffInf && mushroom.position.z < diffSup) {
+                return mushroom;
+            }
+        }
+    }
+    return null;
 }
